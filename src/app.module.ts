@@ -4,7 +4,6 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ConfigService } from './config';
 import { PostModule } from './modules/post/post.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { FacebookStrategy } from './modules/auth/FacebookStrategy';
 import { JwtStrategy } from './modules/auth/JwtStrategy';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { RolesGuard } from './modules/auth/RolesGuard';
@@ -52,6 +51,6 @@ const config = ConfigService.getInstance();
     TreatmentModule,
     TasksServiceModule
   ],
-  providers: [FacebookStrategy, JwtStrategy, AppGateway]
+  providers: [JwtStrategy, AppGateway]
 })
 export class AppModule {}
