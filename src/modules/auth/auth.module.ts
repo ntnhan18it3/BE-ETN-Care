@@ -3,13 +3,12 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { FacebookStrategy } from './FacebookStrategy';
 import { JwtStrategy } from './JwtStrategy';
 
 const configService = ConfigService.getInstance();
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, FacebookStrategy, JwtStrategy],
+  providers: [AuthService, JwtStrategy],
   imports: [
     JwtModule.registerAsync({
       useFactory: async () => {
