@@ -19,6 +19,25 @@ export enum NotificationType {
   INFO = 'info'
 }
 
+export enum SessionSchedule {
+  MORNING = 1,
+  AFTERNOON = 2
+}
+
+export enum ScheduleDay {
+  sun = 0,
+  mon = 1,
+  tue = 2,
+  wed = 3,
+  thu = 4,
+  fri = 5,
+  sat = 6
+}
+
+export const getKeyOfDay = (day: ScheduleDay) => {
+  return ScheduleDay[day];
+};
+
 export const PostType = {
   NEWEST: 'newest',
   POPULAR: 'popular',

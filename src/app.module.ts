@@ -20,6 +20,7 @@ import { RecordModule } from './modules/record/record.module';
 import { TreatmentModule } from './modules/treatment/treatment.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksServiceModule } from './modules/tasks-service/tasks-service.module';
+import { AppointmentSchedulingModule } from './modules/appointment-scheduling/appointment-scheduling.module';
 
 const config = ConfigService.getInstance();
 @Module({
@@ -49,7 +50,8 @@ const config = ConfigService.getInstance();
     NotificationModule,
     // RecordModule,
     TreatmentModule,
-    TasksServiceModule
+    TasksServiceModule,
+    AppointmentSchedulingModule
   ],
   providers: [JwtStrategy, AppGateway]
 })
