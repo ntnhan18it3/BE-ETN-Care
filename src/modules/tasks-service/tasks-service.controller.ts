@@ -7,8 +7,11 @@ export class TasksServiceController {
 
     @Cron(CronExpression.EVERY_10_MINUTES)
     async handleCron() {
-        this.logger.log('Every 10 minutes, avoid shutting down the server');
-        await fetch(process.env.API_TARGET)
-        this.logger.log('Called :: '+process.env.API_TARGET);
+        const cronURL = process.env.API_TARGET;
+        if(cronURL){
+            this.logger.log('Every 10 minutes, avoid shutting down the server');
+            await fetch(cronURL)
+            this.logger.log('Called :: '+cronURL);
+        }
     }
 }
