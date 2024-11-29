@@ -166,7 +166,7 @@ export class AppointmentSchedulingService {
       status: SCHEDULE_STATUS.PROGRESS,
       createdAt: new Date(),
       from: from ?? _min.from,
-      to: to ?? _min.from,
+      to: to ?? _min.to,
       room: room ?? _min.room,
       name,
       service,
