@@ -40,4 +40,9 @@ export class RegistrationDto {
   @IsString()
   @IsOptional()
   to: string;
+
+  
+  @IsString()
+  @IsOptional()
+  room: string;
 }

@@ -20,7 +20,7 @@ export class AppointmentSchedulingService {
   }
 
   async registration(input: RegistrationDto) {
-    const { doctorId, userId, date, name, note, phone, service, session, from, to } = input;
+    const { doctorId, userId, date, name, note, phone, service, session, from, to, room } = input;
 
     const regisExisted = await this.scheduleCollection.findOne({
       $or: [
@@ -110,6 +110,7 @@ export class AppointmentSchedulingService {
     // check duplicate with record created before
     const existed = await this.scheduleCollection.findOne<any>({ date: newDate });
     if (existed) throw new BadRequestException({ message: 'Lịch khám đã được đặt bởi bạn trước đó', data: existed });
+    
     // No doctor
     if (!newDoctors.length)
       throw new BadRequestException({
@@ -117,15 +118,15 @@ export class AppointmentSchedulingService {
       });
 
     const doctorIds = newDoctors.map((d) => d._id);
-    const count = await this.scheduleCollection
+    const countSchedules = await this.scheduleCollection
       .aggregate<any>([
         { $match: { doctorId: { $in: doctorIds }, date: newDate } },
         { $group: { _id: '$doctorId', count: { $sum: 1 } } }
       ])
       .toArray();
 
-    const scheduleCount = doctorIds.map((id) => {
-      const item = count.find((i) => i._id.toString() == id.toString());
+    const combinaScheduleCount = doctorIds.map((id) => {
+      const item = countSchedules.find((i) => i._id.toString() == id.toString());
       if (item) return item;
       return {
         _id: id,
@@ -133,7 +134,27 @@ export class AppointmentSchedulingService {
       };
     });
 
-    const doctor = scheduleCount.reduce(function (prev, curr) {
+    const doctorHasLeastSchedule = combinaScheduleCount.reduce(function (prev, curr) {
+      return prev.count < curr.count ? prev : curr;
+    });
+
+    const doctor = await this.userCollection.findOne({ _id: doctorHasLeastSchedule._id }, { projection: { timeServing: 1 } });
+    const timeServing = doctor?.timeServing?.[getKeyOfDay(newDay)];
+
+    const countTimeServing = await this.scheduleCollection
+      .aggregate<any>([
+        { $match: { doctorId: doctorHasLeastSchedule._id, date: newDate } },
+        { $group: { _id: '$from', count: { $sum: 1 } } }
+      ])
+      .toArray();
+
+    const combineTimeServing = timeServing.map((i) => {
+      const _its = countTimeServing.find((v) => v._id === i.from);
+      if (_its) return { ...i, count: _its.count };
+      return { ...i, count: 0 };
+    });
+    
+    const _min = combineTimeServing.reduce(function (prev, curr) {
       return prev.count < curr.count ? prev : curr;
     });
 
@@ -144,8 +165,9 @@ export class AppointmentSchedulingService {
       session: newSession,
       status: SCHEDULE_STATUS.PROGRESS,
       createdAt: new Date(),
-      from: from ? new Date(from) : null,
-      to: to ? new Date(to) : null,
+      from: from ?? _min.from,
+      to: to ?? _min.from,
+      room: room ?? _min.room,
       name,
       service,
       phone,
@@ -170,15 +192,15 @@ export class AppointmentSchedulingService {
       { projection: { email: 1, fullName: 1 } }
     );
 
+    const user = await this.userCollection.findOne<any>(
+      { _id: new ObjectId(data.userId) },
+      { projection: { email: 1, fullName: 1 } }
+    );
+
     return {
-      doctor: doctor,
-      date: data.date,
-      session: data.session,
-      status: data.status,
-      createdAt: data.createdAt,
-      from: null,
-      to: null,
-      service: data.service
+      ...data,
+      doctor,
+      user
     };
   };
 }
