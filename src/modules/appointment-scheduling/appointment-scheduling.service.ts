@@ -29,15 +29,17 @@ export class AppointmentSchedulingService {
       ]
     });
 
+    // validate duplicate
     if (regisExisted)
       throw new BadRequestException({ message: 'Lịch khám đã được đặt bởi bạn trước đó', data: regisExisted });
 
+    // check the schedule created
     const doctors = await this.userCollection
       .find<any>({ role: Role.DOCTOR, timeServing: { $ne: null } })
       .project({ timeServing: 1, email: 1, fullName: 1 })
       .toArray();
 
-    if (doctors.some((d) => d?.timeServing?.length != 0)) {
+    if (doctors.some((d) => d?.timeServing != null && Object.keys(d?.timeServing)?.length)) {
     } else throw new BadRequestException({ message: 'Không tìm thấy thời gian phù hợp' });
 
     const now = new Date();
@@ -46,6 +48,7 @@ export class AppointmentSchedulingService {
     let _date = date ? new Date(date) : null;
     let _day = _date ? new Date(_date).getDay() : null;
 
+    // get doctors work on day
     const getDoctorsOnDays = (day?: ScheduleDay, session?: SessionSchedule) => {
       const doctorsOnTime = doctors.filter((d) => {
         const timeServings = d?.timeServing?.[getKeyOfDay(day)];
@@ -57,11 +60,13 @@ export class AppointmentSchedulingService {
       return doctorsOnTime;
     };
 
+    // if day selected
     if (_day) {
       const doctorsOnTime = getDoctorsOnDays(_day, session);
       if (!doctorsOnTime.length) throw new BadRequestException({ message: 'Không tìm thấy thời gian phù hợp' });
     }
 
+    // if sesstion selected
     if (session == 0) {
       const countMORNING = await this.scheduleCollection.findOne({
         date: new Date(date),
@@ -76,6 +81,7 @@ export class AppointmentSchedulingService {
       newSession = countMORNING < countPM ? SessionSchedule.MORNING : SessionSchedule.AFTERNOON;
     }
 
+    // get date valid
     let newDate = _date !== null ? _date : addDays(toDay, 1);
     let newDay = _day !== null ? _day : addDays(toDay, 1).getDay();
     let newDoctors: any[] = [];
@@ -88,9 +94,48 @@ export class AppointmentSchedulingService {
         break;
       }
     }
+    // next week
+    if (!newDoctors.length) {
+      for (let i = ScheduleDay.mon; i <= ScheduleDay.sat; i++) {
+        const doctorsOnTime = getDoctorsOnDays(i, newSession);
+        if (doctorsOnTime.length) {
+          newDay = i;
+          newDate = addDays(toDay, ScheduleDay.sat - toDay.getDay() + 1 + i);
+          newDoctors = doctorsOnTime;
+          break;
+        }
+      }
+    }
 
-    if (!newDoctors.length) throw new BadRequestException({ message: 'Không tìm thấy thời gian phù hợp' });
-    const doctor = doctors?.[0]; // TODO: hardcode update later
+    // check duplicate with record created before
+    const existed = await this.scheduleCollection.findOne<any>({ date: newDate });
+    if (existed) throw new BadRequestException({ message: 'Lịch khám đã được đặt bởi bạn trước đó', data: existed });
+    // No doctor
+    if (!newDoctors.length)
+      throw new BadRequestException({
+        message: 'Không tìm thấy thời gian phù hợp hoặc không có bác sĩ nào làm việc vào thời gian này!'
+      });
+
+    const doctorIds = newDoctors.map((d) => d._id);
+    const count = await this.scheduleCollection
+      .aggregate<any>([
+        { $match: { doctorId: { $in: doctorIds }, date: newDate } },
+        { $group: { _id: '$doctorId', count: { $sum: 1 } } }
+      ])
+      .toArray();
+
+    const scheduleCount = doctorIds.map((id) => {
+      const item = count.find((i) => i._id.toString() == id.toString());
+      if (item) return item;
+      return {
+        _id: id,
+        count: 0
+      };
+    });
+
+    const doctor = scheduleCount.reduce(function (prev, curr) {
+      return prev.count < curr.count ? prev : curr;
+    });
 
     const record = await this.scheduleCollection.insertOne({
       userId: userId ? new ObjectId(userId) : null,
@@ -107,9 +152,11 @@ export class AppointmentSchedulingService {
       note
     });
 
+    const data = await this.getAppointmentScheduling(record.insertedId.toString());
     return {
       message: 'Đặt lịch thành công',
-      id: record.insertedId
+      id: record.insertedId,
+      data
     };
   }
 
