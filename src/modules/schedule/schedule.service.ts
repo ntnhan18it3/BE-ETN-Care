@@ -24,7 +24,8 @@ export class ScheduleService {
   private readonly userCollection: Collection;
   constructor(@InjectConnection() private connection: Connection, private readonly mailerService: MailerService) {
     this.userCollection = this.connection.collection('users');
-    this.scheduleCollection = this.connection.collection('schedules');
+    // this.scheduleCollection = this.connection.collection('schedules');
+    this.scheduleCollection = this.connection.collection('appointment-scheduling');
     this.notificationCollection = this.connection.collection('notifications');
   }
 
@@ -158,8 +159,12 @@ export class ScheduleService {
               pipeline: [{ $project: { password: 0 } }]
             }
           },
-          { $unwind: '$user' },
-          // { $unwind: '$doctor' }
+          {
+            $unwind: {
+              path: '$user',
+              preserveNullAndEmptyArrays: true
+            }
+          },
           {
             $unwind: {
               path: '$doctor',
