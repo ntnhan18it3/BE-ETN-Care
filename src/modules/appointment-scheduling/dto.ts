@@ -33,15 +33,14 @@ export class RegistrationDto {
   @IsOptional()
   session: number;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  from: string;
+  from: number;
 
-  @IsString()
+  @IsNumber()
   @IsOptional()
-  to: string;
+  to: number;
 
-  
   @IsString()
   @IsOptional()
   room: string;

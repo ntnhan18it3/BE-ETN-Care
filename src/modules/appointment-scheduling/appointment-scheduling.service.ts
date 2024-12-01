@@ -108,9 +108,9 @@ export class AppointmentSchedulingService {
     }
 
     // check duplicate with record created before
-    const existed = await this.scheduleCollection.findOne<any>({ date: newDate });
+    const existed = await this.scheduleCollection.findOne<any>({ date: newDate, phone: phone });
     if (existed) throw new BadRequestException({ message: 'Lịch khám đã được đặt bởi bạn trước đó', data: existed });
-    
+
     // No doctor
     if (!newDoctors.length)
       throw new BadRequestException({
@@ -138,7 +138,10 @@ export class AppointmentSchedulingService {
       return prev.count < curr.count ? prev : curr;
     });
 
-    const doctor = await this.userCollection.findOne({ _id: doctorHasLeastSchedule._id }, { projection: { timeServing: 1 } });
+    const doctor = await this.userCollection.findOne(
+      { _id: doctorHasLeastSchedule._id },
+      { projection: { timeServing: 1 } }
+    );
     const timeServing = doctor?.timeServing?.[getKeyOfDay(newDay)];
 
     const countTimeServing = await this.scheduleCollection
@@ -153,7 +156,7 @@ export class AppointmentSchedulingService {
       if (_its) return { ...i, count: _its.count };
       return { ...i, count: 0 };
     });
-    
+
     const _min = combineTimeServing.reduce(function (prev, curr) {
       return prev.count < curr.count ? prev : curr;
     });
