@@ -86,7 +86,7 @@ export class ScheduleController {
   }
 
   @Patch(':id')
-  @Roles(Role.DOCTOR)
+  @Roles(Role.AS)
   @UseGuards(JwtGuard)
   updateSchedule(@Param('id') id: string, @Body() body: VerifyDto, @Req() req: AuthRequest) {
     return this.scheduleService.updateSchedule(id, body);

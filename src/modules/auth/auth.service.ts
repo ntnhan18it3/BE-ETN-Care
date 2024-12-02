@@ -68,7 +68,7 @@ export class AuthService {
     if (emailExist) throw new BadRequestException({ field: 'email', message: 'Email đã được sử dụng' });
 
     const passwordHashed = bcrypt.hashSync(password, 10);
-    await this.userCollection.insertOne({
+    const userCreated = await this.userCollection.insertOne({
       email,
       password: passwordHashed,
       verify: false,
@@ -84,22 +84,24 @@ export class AuthService {
       { expiresIn: '24h', secret: ConfigService.getInstance().get('JWT_SECRET') }
     );
 
-    const sendMail = await this.mailerService.sendMail({
-      to: email,
-      from: 'admin@mental-health.com',
-      subject: 'Xác nhận tài khoản đăng ký từ hệ thống SKTT',
-      text: `Xin chào bạn!`,
-      html: `<p>Xin chào bạn!</p><p>Nhấn <a href="${ConfigService.getInstance().get(
-        'DOMAIN'
-      )}/api/v1/auth/verify-email?token=${token}">vào đây</a> để xác nhận đăng ký tài khoản của bạn!</p>`
-    });
-
-    if (sendMail?.response?.includes('250'))
-      return {
-        message: 'Bạn vui lòng kiểm tra email để hoàn tất đăng ký!'
-      };
-
-    throw new BadRequestException({ message: 'Tạo tài khoản thất bại' });
+    try {
+      const sendMail = await this.mailerService.sendMail({
+        to: email,
+        from: process.env.EMAIL_USERNAME,
+        subject: 'Xác nhận đăng ký tài khoản',
+        text: `Xin chào bạn!`,
+        html: `<p>Xin chào bạn!</p><p>Nhấn <a href="${ConfigService.getInstance().get(
+          'DOMAIN'
+        )}/api/v1/auth/verify-email?token=${token}">vào đây</a> để xác nhận đăng ký tài khoản của bạn!</p>`
+      });
+      if (sendMail?.response?.includes('250'))
+        return {
+          message: 'Bạn vui lòng kiểm tra email để hoàn tất đăng ký!'
+        };
+    } catch (error) {
+      await this.userCollection.findOneAndDelete({ _id: userCreated.insertedId });
+      throw new BadRequestException({ message: 'Tạo tài khoản thất bại' });
+    }
   }
 
   async accountActive(email: string) {
@@ -118,8 +120,8 @@ export class AuthService {
 
     const sendMail = await this.mailerService.sendMail({
       to: email,
-      from: 'tnthang.18it5@vku.udn.vn',
-      subject: 'Xác nhận tài khoản đăng ký từ hệ thống SKTT',
+      from: process.env.EMAIL_USERNAME,
+      subject: 'Xác nhận đăng ký tài khoản',
       text: `Xin chào bạn!`,
       html: `<p>Xin chào bạn!</p><p>Nhấn <a href="${ConfigService.getInstance().get(
         'DOMAIN'
@@ -168,7 +170,7 @@ export class AuthService {
 
     await this.mailerService.sendMail({
       to: email,
-      from: 'tnthang.18it5@vku.udn.vn',
+      from: process.env.EMAIL_USERNAME,
       subject: 'Quên mật khẩu',
       text: `Xin chào bạn!`,
       html: `<p>Xin chào bạn!</p><p>Mật khẩu mới của bạn là: ${newPassword}, vui lòng thay đổi mật khẩu mới để tiếp tục sử dụng.</p>`
@@ -210,11 +212,11 @@ export class AuthService {
       });
 
     if (userExist?.lock)
-    throw new BadRequestException({
-      message: 'Tài khoản đã bị cấm truy cập',
-      code: ERROR_ACCOUNT_CODE.BANNED,
-      email
-    });
+      throw new BadRequestException({
+        message: 'Tài khoản đã bị cấm truy cập',
+        code: ERROR_ACCOUNT_CODE.BANNED,
+        email
+      });
 
     const payload = {
       id: userExist?._id,

@@ -166,7 +166,7 @@ export class AppointmentSchedulingService {
       doctorId: doctor ? new ObjectId(doctor?._id) : null,
       date: newDate,
       session: newSession,
-      status: SCHEDULE_STATUS.PROGRESS,
+      status: SCHEDULE_STATUS.PENDING,
       createdAt: new Date(),
       from: from ?? _min.from,
       to: to ?? _min.to,

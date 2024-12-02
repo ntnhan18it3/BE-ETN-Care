@@ -215,7 +215,7 @@ export class ScheduleService {
         {
           $match: {
             ...filter,
-            from: { $gte: new Date(dayOnMonth[0]) }
+            date: { $gte: new Date(dayOnMonth[0]) }
           }
         },
         {
@@ -223,7 +223,7 @@ export class ScheduleService {
             _id: {
               $dateToString: {
                 format: '%Y-%m-%d',
-                date: '$from'
+                date: '$date'
               }
             },
             total: { $sum: 1 }
@@ -321,12 +321,10 @@ export class ScheduleService {
   async updateSchedule(id: string, body: VerifyDto) {
     const schedule = await this.scheduleCollection.findOne({ _id: new ObjectId(id) });
     const user = await this.userCollection.findOne({ _id: new ObjectId(schedule.userId) });
-    const { from, room } = schedule;
-    const offset = 7 * 60 * 60 * 1000; // Convert 7 hours to milliseconds
-    const _from = new Date(new Date(from).getTime() + offset);
-    const time = `${_from.getUTCHours()}:${_from.getUTCMinutes()} - ${_from.getDate()}/${
-      _from.getUTCMonth() + 1
-    }/${_from.getUTCFullYear()}`;
+    const { from, room, date } = schedule;
+    // const offset = 7 * 60 * 60 * 1000; // Convert 7 hours to milliseconds
+    const _from = new Date(new Date(date).getTime() + new Date(from).getTime());
+    const time = `${_from.getDate()}/${_from.getMonth() + 1}/${_from.getFullYear()}`;
 
     await this.scheduleCollection.findOneAndUpdate(
       { _id: new ObjectId(id) },
@@ -341,8 +339,8 @@ export class ScheduleService {
     if (body.status === SCHEDULE_STATUS.PROGRESS) {
       await this.notificationCollection.insertOne({
         title: `Lịch khám bệnh ${time} [${room}]`,
-        description: 'Bác sĩ đã xác nhận lịch khám của bạn',
-        receiver: schedule.userId,
+        description: 'Đã xác nhận lịch khám của bạn',
+        receiver: schedule?.userId,
         type: NotificationType.SUCCESS,
         isRead: false,
         createdAt: new Date(),
@@ -351,15 +349,15 @@ export class ScheduleService {
 
       await this.mailerService.sendMail({
         to: user.email,
-        from: 'tnthang.18it5@vku.udn.vn',
+        from: process.env.EMAIL_USERNAME,
         subject: `Lịch khám bệnh ${time} [${room}]`,
         text: `Xin chào bạn!`,
-        html: `<p>Bác sĩ đã xác nhận lịch khám của bạn.<br/>Vui lòng đến phòng khám đúng giờ. <br/><br/>Trân trọng. </p>`
+        html: `<p>Đã xác nhận lịch khám của bạn.<br/>Vui lòng đến phòng khám đúng giờ. <br/><br/>Trân trọng. </p>`
       });
     } else {
       await this.notificationCollection.insertOne({
         title: `Lịch khám bệnh ${time} [${room}]`,
-        description: 'Bác sĩ đã từ chối lịch khám của bạn',
+        description: 'Đã từ chối lịch khám của bạn',
         receiver: schedule.userId,
         type: NotificationType.DANGER,
         isRead: false,
@@ -369,10 +367,10 @@ export class ScheduleService {
 
       await this.mailerService.sendMail({
         to: user.email,
-        from: 'tnthang.18it5@vku.udn.vn',
+        from: process.env.EMAIL_USERNAME,
         subject: `Lịch khám bệnh ${time} [${room}]`,
         text: `Xin chào bạn!`,
-        html: `<p>Bác sĩ đã từ chối lịch khám của bạn.<br/>Bạn có thể kiểm chi tiết trong quản lý lịch khám. <br/><br/>Trân trọng. </p>`
+        html: `<p>Lịch khám của bạn đã bị từ chối.<br/>Lí do: ${body.message}<br/>Bạn có thể kiểm chi tiết trong quản lý lịch khám. <br/><br/>Trân trọng. </p>`
       });
     }
 
@@ -384,7 +382,15 @@ export class ScheduleService {
     const { page, skip, take } = getPagination(pageNum, size);
 
     const filter: FilterQuery<unknown> = {
-      doctorId: null
+      $or: [
+        {
+          doctorId: null,
+          status: SCHEDULE_STATUS.PENDING
+        },
+        {
+          status: SCHEDULE_STATUS.PENDING
+        }
+      ]
     };
     const sortData: FilterQuery<unknown> = {
       createdAt: -1
@@ -404,7 +410,28 @@ export class ScheduleService {
               pipeline: [{ $project: { password: 0 } }]
             }
           },
-          { $unwind: '$user' }
+          // { $unwind: '$user' },
+          {
+            $unwind: {
+              path: '$user',
+              preserveNullAndEmptyArrays: true
+            }
+          },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'doctorId',
+              foreignField: '_id',
+              as: 'doctor',
+              pipeline: [{ $project: { fullName: 1, email: 1 } }]
+            }
+          },
+          {
+            $unwind: {
+              path: '$doctor',
+              preserveNullAndEmptyArrays: true
+            }
+          }
         ])
         .skip(skip)
         .limit(take)
