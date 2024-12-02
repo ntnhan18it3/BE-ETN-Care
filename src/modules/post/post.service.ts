@@ -56,7 +56,7 @@ export class PostService {
         sortData.likeCount = -1;
         break;
       default:
-        sortData._id = 1;
+        sortData.likeCount = -1;
     }
 
     const [totalRecords, data] = await Promise.all([
