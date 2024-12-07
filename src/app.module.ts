@@ -21,6 +21,7 @@ import { TreatmentModule } from './modules/treatment/treatment.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TasksServiceModule } from './modules/tasks-service/tasks-service.module';
 import { AppointmentSchedulingModule } from './modules/appointment-scheduling/appointment-scheduling.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
 
 const config = ConfigService.getInstance();
 @Module({
@@ -51,7 +52,8 @@ const config = ConfigService.getInstance();
     // RecordModule,
     TreatmentModule,
     TasksServiceModule,
-    AppointmentSchedulingModule
+    AppointmentSchedulingModule,
+    ChatbotModule
   ],
   providers: [JwtStrategy, AppGateway]
 })
