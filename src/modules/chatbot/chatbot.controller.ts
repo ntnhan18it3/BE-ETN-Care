@@ -68,7 +68,7 @@ export class ChatbotController {
       responseMimeType: 'text/plain'
     };
 
-    const dataset = join(process.cwd(), './src/public/dataset/ViMedical_Disease_BenhTaiMuiHong_DataClear_Final.pdf');
+    const dataset = join(process.cwd(), './src/public/dataset/training.pdf');
 
     // TODO Make these files available on the local file system
     // You may need to update the file paths
