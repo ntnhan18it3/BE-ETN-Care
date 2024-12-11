@@ -49,7 +49,7 @@ const config = ConfigService.getInstance();
     UserModule,
     CategoryModule,
     NotificationModule,
-    // RecordModule,
+    RecordModule,
     TreatmentModule,
     TasksServiceModule,
     AppointmentSchedulingModule,

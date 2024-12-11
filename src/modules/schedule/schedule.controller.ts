@@ -33,6 +33,13 @@ export class ScheduleController {
     return this.scheduleService.getNotYetSchedules(query);
   }
 
+  @Patch('record/:id')
+  @UseGuards(JwtGuard)
+  @UsePipes(new MainValidationPipe())
+  createRecord(@Param() id: string, @Body() body: { record: string }) {
+    return this.scheduleService.createRecord(id, body.record);
+  }
+
   @Patch('cancel/:id')
   @UseGuards(JwtGuard)
   @UsePipes(new MainValidationPipe())

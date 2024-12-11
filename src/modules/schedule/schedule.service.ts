@@ -69,6 +69,19 @@ export class ScheduleService {
     return { status: true };
   }
 
+  async createRecord(id: string, record: string) {
+    await this.scheduleCollection.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          record: record
+        }
+      }
+    );
+
+    return { status: true };
+  }
+
   async booked(doctorId: string) {
     const now = new Date();
     const toDay = new Date(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -378,7 +391,7 @@ export class ScheduleService {
   }
 
   async getNotYetSchedules(query: Pagination) {
-    const { page: pageNum, size } = query;
+    const { page: pageNum, size = 999 } = query;
     const { page, skip, take } = getPagination(pageNum, size);
 
     const filter: FilterQuery<unknown> = {
@@ -393,7 +406,8 @@ export class ScheduleService {
       ]
     };
     const sortData: FilterQuery<unknown> = {
-      createdAt: -1
+      date: -1,
+      createdAt: 1
     };
 
     const [totalRecords, data] = await Promise.all([
@@ -434,8 +448,8 @@ export class ScheduleService {
           }
         ])
         .skip(skip)
-        .limit(take)
         .sort(sortData)
+        .limit(take)
         .toArray()
     ]);
 

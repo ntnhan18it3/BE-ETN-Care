@@ -12,9 +12,9 @@ export class RecordService {
   private readonly scheduleCollection: Collection;
   private readonly notificationCollection: Collection;
   constructor(@InjectConnection() private connection: Connection) {
-    this.contract = new ContractService();
+    // this.contract = new ContractService();
     this.userCollection = this.connection.collection('users');
-    this.scheduleCollection = this.connection.collection('schedules');
+    this.scheduleCollection = this.connection.collection('appointment-scheduling');
     this.notificationCollection = this.connection.collection('notifications');
   }
 
@@ -24,13 +24,7 @@ export class RecordService {
   }
 
   async getRecordById(id: number) {
-    const data = await this.contract.getRecordById(id);
-    const [user, doctor] = await Promise.all([
-      this.userCollection.findOne({ _id: new ObjectId(data.record.userId) }, { projection: { password: 0 } }),
-      this.userCollection.findOne({ _id: new ObjectId(data.record.doctorId) }, { projection: { password: 0 } })
-    ]);
-    data['user'] = user;
-    data['doctor'] = doctor;
+    const data = await this.scheduleCollection.findOne<any>({ _id: new ObjectId(id) });
     return data;
   }
 
@@ -65,18 +59,18 @@ export class RecordService {
   }
 
   async getRecordsCreatedByDoctorId(id: string) {
-    const data = await this.contract.getRecordsCreatedByDoctorId(id);
-    const records = await Promise.all(
-      data.map(async (record, index) => {
-        const user = await this.userCollection.findOne(
-          { _id: new ObjectId(record.userId) },
-          { projection: { password: 0 } }
-        );
-        return (data[index] = { ...record, user });
-      })
-    );
-
-    return records;
+    const data = await this.scheduleCollection
+      .aggregate([
+        {
+          $match: {
+            doctorId: new ObjectId(id),
+            record: { $ne: null },
+            status: SCHEDULE_STATUS.COMPLETED
+          }
+        }
+      ])
+      .toArray();
+    return data;
   }
 
   async createRecord(doctorId: string, body: CreateRecordDto) {
@@ -87,7 +81,6 @@ export class RecordService {
 
     const data = JSON.stringify({ ...body, doctorId, user, doctor });
 
-
     await this.contract.createRecord(data, body.userId, user.numberId, doctorId);
     await this.scheduleCollection.updateOne(
       { _id: new ObjectId(body.scheduleId) },
@@ -97,7 +90,7 @@ export class RecordService {
   }
 
   async updateRecord(recordId: number, body: UpdateRecordDto) {
-    const {record} = await this.contract.getRecordById(recordId);
+    const { record } = await this.contract.getRecordById(recordId);
     const data = JSON.stringify({ ...record.data, ...body });
     await this.contract.updateRecord(recordId, data);
     return { status: true };
