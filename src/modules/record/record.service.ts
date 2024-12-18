@@ -25,7 +25,11 @@ export class RecordService {
 
   async getRecordById(id: number) {
     const data = await this.scheduleCollection.findOne<any>({ _id: new ObjectId(id) });
-    return data;
+    const [user, doctor] = await Promise.all([
+      await this.userCollection.findOne({ _id: new ObjectId(data.userId) }, { projection: { password: 0 } }),
+      await this.userCollection.findOne({ _id: new ObjectId(data.doctorId) }, { projection: { password: 0 } })
+    ]);
+    return { ...data, user, doctor };
   }
 
   async getRecordsByNumberId(id: string) {
